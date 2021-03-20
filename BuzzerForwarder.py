@@ -5,6 +5,7 @@ from functools import wraps
 
 import boto3
 from flask import Flask, abort, request
+from twilio.request_validator import RequestValidator
 from twilio.twiml.voice_response import Dial, Number, VoiceResponse
 from werkzeug.exceptions import BadRequestKeyError
 
@@ -44,16 +45,29 @@ def parse_NUMBERS(secret):
 # RETRUN: true or flase based on if the medium strength auth
 #
 def validate_twilio_request(f):
+    """Validates that incoming requests genuinely originated from Twilio"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        try:
-            if (request.values["AccountSid"] == secret["TWILIO_ACCOUNTSID"] and request.values["Caller"] == secret["BUZZERNUMBER"]):
-                return f(*args, **kwargs)
-            else:
-                abort(403)
-        except BadRequestKeyError:
-            abort(403)
-    
+        # Create an instance of the RequestValidator class
+        #I keep my private information in the secret manager
+        validator = RequestValidator(secret["TWILIO_AUTH_TOKEN"])
+
+        # Validate the request using its URL, POST data,
+        # and X-TWILIO-SIGNATURE header
+
+        # Tried request.url_base as well
+        # request.form is blank, params are put in the url like a GET request
+        request_valid = validator.validate(
+            request.url,
+            request.args,
+            request.headers.get('X-TWILIO-SIGNATURE', ''))
+
+        # Continue processing the request if it's valid, return a 403 error if
+        # it's not
+        if request_valid:
+            return f(*args, **kwargs)
+        else:
+            return abort(403)
     return decorated_function
 
 
