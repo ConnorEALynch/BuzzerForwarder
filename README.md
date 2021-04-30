@@ -9,5 +9,5 @@ Python Flask: Mostly chosen to familiar with the language and variety of librari
 Twilio: Needed a phone number with programable API. Selected due to customizability and lack of other options.
 
 ## Setup Tutorial
-Awaiting Building added phone number
+Awaiting Building to add phone number
 Coming Soon…
