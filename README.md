@@ -8,6 +8,10 @@ AWS Lambda: Lightweight hosting option that runs only when queried. Chosen for i
 Python Flask: Mostly chosen to familiar with the language and variety of libraries that would help overcoming making these technologies work together
 Twilio: Needed a phone number with programable API. Selected due to customizability and lack of other options.
 
+## Issues
+- Does not use Twilio's authorization token, spoke with a support to try and resolve the issue to no avail. will continue to implement it in the dev branch
+- Error message over phone when unauthorized. view issues tab for details
+- setup is long
+
 ## Setup Tutorial
-Awaiting Building to add phone number
-Coming Soon…
+If there is interest I will make a setup tutorial, if there is a lot of interest I simplify the setup process
