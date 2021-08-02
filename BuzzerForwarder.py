@@ -5,7 +5,6 @@ from functools import wraps
 
 import boto3
 from flask import Flask, abort, request
-from twilio.request_validator import RequestValidator
 from twilio.twiml.voice_response import Dial, Number, VoiceResponse
 from werkzeug.exceptions import BadRequestKeyError
 
@@ -40,36 +39,18 @@ def parse_NUMBERS(secret):
 	return numArray
 
 
-# FUNCTION: validate_twilio_request()
-# PARAMS: none
-# RETRUN: true or flase based on if the medium strength auth
-#
 def validate_twilio_request(f):
-    """Validates that incoming requests genuinely originated from Twilio"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Create an instance of the RequestValidator class
-        #I keep my private information in the secret manager
-        validator = RequestValidator(secret["TWILIO_AUTH_TOKEN"])
+        try:
+            if (request.values["AccountSid"] == secret["TWILIO_ACCOUNTSID"] and request.values["Caller"] == secret["BUZZERNUMBER"]):
+                return f(*args, **kwargs)
+            else:
+                abort(403)
+        except Exception:
+            abort(403)
 
-        # Validate the request using its URL, POST data,
-        # and X-TWILIO-SIGNATURE header
-
-        # Tried request.url_base as well
-        # request.form is blank, params are put in the url like a GET request
-        request_valid = validator.validate(
-            request.url,
-            request.args,
-            request.headers.get('X-TWILIO-SIGNATURE', ''))
-
-        # Continue processing the request if it's valid, return a 403 error if
-        # it's not
-        if request_valid:
-            return f(*args, **kwargs)
-        else:
-            return abort(403)
     return decorated_function
-
 
 @app.route('/', methods = ['POST', 'GET'])
 @validate_twilio_request #send to the validator
@@ -99,16 +80,21 @@ def call(resp):
 	dial = Dial()
 	numbers = parse_NUMBERS(secret)
 	for number in numbers:
-		dial.number(
-			number
-		)
+		dial.number(number)
+
 	resp.append(dial)
 	
+
+
+
 #Custom error page
 #
 @app.errorhandler(403)
 def unauthorized(e):
-    return "You are Unauthorized to visit this Website"
+    resp = VoiceResponse()
+    resp.reject()
+    return str(resp)
+    #return "You are Unauthorized to visit this Website"
 
 
 if __name__ == "__main__":
