@@ -1,31 +1,24 @@
 
 import json
 import os
+import time
+from datetime import date, datetime, timedelta
 from functools import wraps
 
 import boto3
 from flask import Flask, abort, request
+from flask.wrappers import Response
+from twilio.twiml.messaging_response import Message, MessagingResponse
 from twilio.twiml.voice_response import Dial, Number, VoiceResponse
 from werkzeug.exceptions import BadRequestKeyError
+
+from SecretManagerConrol import SecretManagerControl
 
 app = Flask(__name__)
 
 
-# FUNCTION: def get_secret_value(name, version=None)
-# PARAMS:
-#   name: the ARN of the secret manager
-#   version=None: secret version default is none
-# RETRUN: an object with 
-#
-def get_secret_value(name, version=None):
-    secrets_client = boto3.client("secretsmanager", region_name='us-east-1')
-    kwargs = {'SecretId': name}
-    if version is not None:
-        kwargs['VersionStage'] = version
-    response = secrets_client.get_secret_value(**kwargs)
-    return json.loads(response["SecretString"])
 
-secret = get_secret_value(os.environ['secretARN'])
+secret = SecretManagerControl(os.environ['secretARN'])
 
 # FUNCTION: parse_NUMBERS(secret)
 # PARAMS: secret
@@ -78,14 +71,52 @@ def verifyCaller():
 def call(resp):
 	
 	dial = Dial()
-	numbers = parse_NUMBERS(secret)
+	numbers = parse_NUMBERS(secret.values.NUMBERS)
 	for number in numbers:
 		dial.number(number)
 
 	resp.append(dial)
+
+
 	
+@app.route('/mute', methods = ['POST', 'GET'])
+@validate_twilio_request #send to the validator
+def toggleMute():
+    resp = MessagingResponse()
 
+    try:
+        messageBody = request.values["Body"]
+        if messageBody.lower() == "unmute":
+            resp.message("")
+        elif parseTime(messageBody) != None:
+            resp.message("you will not be desturbed until: [time]")
+        else:
+            resp.message("I didn't understand that message. [mute usage message]")
 
+    except Exception:
+        resp.message("something fucky happened serverside")
+
+    return str(resp)
+
+def parseTime(message):
+    #this will be more robust later
+    result = None
+    try:
+        #try and parse the time
+        muteTime = time.strptime(message,"%I:%M %p")
+        today = date.today()
+        result = datetime.combine(muteTime, today)
+        #if result is in the past apply the specified time to tommorrow
+        if result < datetime.now() :
+            result = datetime.combine(muteTime,today + timedelta(days= 1))
+        #add more robust exception cases
+    except Exception:
+        try:
+             result = datetime.strptime(message)
+        except Exception:
+            #failed either parser
+            result = None
+    return result
 
 #Custom error page
 #
