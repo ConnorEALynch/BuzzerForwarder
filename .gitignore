@@ -1,3 +1,4 @@
 /env/Scripts/
 .vscode
 zappa_settings.json
+tester.py
